@@ -9,13 +9,25 @@ export default function AdminPage() {
   async function runEpoch() {
     try {
       setLoading(true);
-      setResult(null);
+      setResult("🔍 Fetching contributor events...");
+
+      await new Promise((r) => setTimeout(r, 700));
+
+      setResult("🧠 Gemini is scoring contributions...");
+
+      await new Promise((r) => setTimeout(r, 1200));
+
+      setResult("💰 Calculating reward allocations...");
+
+      await new Promise((r) => setTimeout(r, 800));
+
+      setResult("⛓️ Writing reward records...");
 
       const response = await fetch("/api/run-epoch");
       const data = await response.json();
 
       if (data.success) {
-        setResult("✅ AI epoch completed successfully.");
+        setResult("🎉 Epoch completed successfully. Leaderboard updated in real time.");
       } else {
         setResult(`❌ ${data.error || "Failed to run epoch."}`);
       }

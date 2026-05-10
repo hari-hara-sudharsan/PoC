@@ -2,6 +2,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import RealtimeLeaderboard from "@/components/realtime-leaderboard";
 import { supabase } from "@/lib/supabase";
+import ConnectWalletButton from "@/components/connect-wallet-button";
 
 export default async function Home() {
   const { data: contributors } = await supabase
@@ -45,6 +46,8 @@ export default async function Home() {
               >
                 Open Demo Console
               </Link>
+
+              <ConnectWalletButton />
 
               <a
                 href="#leaderboard"
