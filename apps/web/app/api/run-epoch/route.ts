@@ -4,16 +4,17 @@ import { scoreContributor } from "@/lib/claude";
 
 export async function GET() {
   try {
-    // Get contributors
-    const { data: contributors, error } = await serverSupabase
-      .from("contributors")
-      .select("*");
+    // Fetch contributors
+    const { data: contributors, error } =
+      await serverSupabase
+        .from("contributors")
+        .select("*");
 
     if (error || !contributors) {
       throw new Error("Failed to fetch contributors");
     }
 
-    // Get or create epoch #1
+    // Fetch or create epoch
     let { data: epoch } = await serverSupabase
       .from("epochs")
       .select("*")
@@ -21,7 +22,7 @@ export async function GET() {
       .single();
 
     if (!epoch) {
-      const { data: createdEpoch, error: epochError } =
+      const { data: createdEpoch } =
         await serverSupabase
           .from("epochs")
           .insert({
@@ -32,15 +33,18 @@ export async function GET() {
           .select()
           .single();
 
-      if (epochError || !createdEpoch) {
-        throw new Error("Failed to create epoch");
-      }
-
       epoch = createdEpoch;
     }
 
+    if (!epoch) {
+      throw new Error("Failed to create epoch");
+    }
+
+    // Store AI results temporarily
+    const scoredContributors: any[] = [];
+
+    // AI score contributors
     for (const contributor of contributors) {
-      // Fetch contributor events
       const { data: events } = await serverSupabase
         .from("events")
         .select("*")
@@ -49,16 +53,37 @@ export async function GET() {
       const eventTexts =
         events?.map((event) => event.content) ?? [];
 
-      // Skip contributors with no events
       if (eventTexts.length === 0) {
         continue;
       }
 
-      // AI scoring
       const result = await scoreContributor(
         contributor.display_name,
         eventTexts
       );
+
+      scoredContributors.push({
+        contributor,
+        result,
+      });
+    }
+
+    // Calculate total score sum
+    const totalScoreSum =
+      scoredContributors.reduce(
+        (sum, item) =>
+          sum + Number(item.result.final_score),
+        0
+      );
+
+    // Distribute rewards
+    for (const item of scoredContributors) {
+      const { contributor, result } = item;
+
+      const rewardAmount =
+        (Number(result.final_score) /
+          totalScoreSum) *
+        Number(epoch.total_reward_pool);
 
       // Update contributor summary
       await serverSupabase
@@ -66,39 +91,66 @@ export async function GET() {
         .update({
           total_score: result.final_score,
           badge: result.badge,
+          total_rewards: rewardAmount,
         })
         .eq("id", contributor.id);
 
-      // Remove previous score for this epoch
+      // Remove old score
       await serverSupabase
         .from("scores")
         .delete()
         .eq("contributor_id", contributor.id)
         .eq("epoch_id", epoch.id);
 
-      // Insert detailed score record
+      // Insert detailed score
       await serverSupabase
         .from("scores")
         .insert({
           contributor_id: contributor.id,
           epoch_id: epoch.id,
-          education_score: result.education_score,
-          growth_score: result.growth_score,
-          retention_score: result.retention_score,
-          culture_score: result.culture_score,
-          final_score: result.final_score,
-          reasoning: result.reasoning,
+          education_score:
+            result.education_score,
+          growth_score:
+            result.growth_score,
+          retention_score:
+            result.retention_score,
+          culture_score:
+            result.culture_score,
+          final_score:
+            result.final_score,
+          reasoning:
+            result.reasoning,
           suspicious: false,
         });
 
+      // Remove previous reward
+      await serverSupabase
+        .from("rewards")
+        .delete()
+        .eq("contributor_id", contributor.id)
+        .eq("epoch_id", epoch.id);
+
+      // Insert reward
+      await serverSupabase
+        .from("rewards")
+        .insert({
+          contributor_id: contributor.id,
+          epoch_id: epoch.id,
+          reward_amount: rewardAmount,
+          claimed: false,
+        });
+
       console.log(
-        `Scored ${contributor.display_name}: ${result.final_score}`
+        `${contributor.display_name} earned ${rewardAmount.toFixed(
+          2
+        )} SOL`
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: "Epoch completed and scores persisted",
+      message:
+        "Epoch completed with reward distribution",
     });
   } catch (error) {
     console.error(error);
@@ -106,11 +158,14 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error
-          ? error.message
-          : "Unknown error",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown error",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }
