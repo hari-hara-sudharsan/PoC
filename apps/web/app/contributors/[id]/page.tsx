@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { serverSupabase } from "@/lib/server-supabase";
+import { ClaimRewardForm } from "@/components/claim-reward-form";
 
 interface PageProps {
   params: Promise<{
@@ -121,32 +122,7 @@ export default async function ContributorPage({
             )}
 
             {!reward.claimed && (
-              <form
-                action={`/api/claim-reward`}
-                method="post"
-                className="mt-6"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  fetch("/api/claim-reward", {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      rewardId: reward.id,
-                    }),
-                  }).then(() => {
-                    window.location.reload();
-                  });
-                }}
-              >
-                <button
-                  type="submit"
-                  className="rounded-xl bg-emerald-500 px-6 py-3 font-semibold text-black transition hover:bg-emerald-400"
-                >
-                  Claim Rewards
-                </button>
-              </form>
+              <ClaimRewardForm rewardId={reward.id} />
             )}
           </div>
         )}
