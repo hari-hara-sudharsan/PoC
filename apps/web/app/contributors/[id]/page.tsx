@@ -37,6 +37,14 @@ export default async function ContributorPage({
     .limit(1)
     .single();
 
+  const { data: reward } = await serverSupabase
+    .from("rewards")
+    .select("*")
+    .eq("contributor_id", id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
   return (
     <main className="min-h-screen bg-black text-white">
       <div className="mx-auto max-w-5xl px-6 py-12">
@@ -79,6 +87,69 @@ export default async function ContributorPage({
             />
           </div>
         </div>
+
+        {reward && (
+          <div className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
+            <h2 className="mb-4 text-3xl font-bold">
+              Reward Claim
+            </h2>
+
+            <p className="text-gray-400">
+              Pending Reward:{" "}
+              <span className="font-semibold text-emerald-400">
+                {Number(reward.reward_amount).toFixed(2)} SOL
+              </span>
+            </p>
+
+            <p className="mt-2 text-gray-400">
+              Status:{" "}
+              <span
+                className={
+                  reward.claimed
+                    ? "text-emerald-400"
+                    : "text-yellow-400"
+                }
+              >
+                {reward.claimed ? "Claimed" : "Pending"}
+              </span>
+            </p>
+
+            {reward.tx_hash && (
+              <p className="mt-2 break-all text-sm text-gray-500">
+                Tx Hash: {reward.tx_hash}
+              </p>
+            )}
+
+            {!reward.claimed && (
+              <form
+                action={`/api/claim-reward`}
+                method="post"
+                className="mt-6"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  fetch("/api/claim-reward", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      rewardId: reward.id,
+                    }),
+                  }).then(() => {
+                    window.location.reload();
+                  });
+                }}
+              >
+                <button
+                  type="submit"
+                  className="rounded-xl bg-emerald-500 px-6 py-3 font-semibold text-black transition hover:bg-emerald-400"
+                >
+                  Claim Rewards
+                </button>
+              </form>
+            )}
+          </div>
+        )}
 
         {score && (
           <>
