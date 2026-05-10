@@ -1,4 +1,4 @@
-import Leaderboard from "@/components/leaderboard";
+import RealtimeLeaderboard from "@/components/realtime-leaderboard";
 import { supabase } from "@/lib/supabase";
 
 export default async function Home() {
@@ -29,7 +29,7 @@ export default async function Home() {
           Reward the people who actually grow the community.
         </p>
 
-        <Leaderboard contributors={contributors ?? []} />
+        <RealtimeLeaderboard initialContributors={contributors ?? []} />
       </div>
     </main>
   );
